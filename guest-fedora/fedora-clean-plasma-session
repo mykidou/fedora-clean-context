@@ -24,8 +24,7 @@ export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export VK_ICD_FILENAMES=/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json
 export GBM_BACKEND=nvidia-drm
 export KWIN_DRM_USE_EGL_STREAMS=0
-export KWIN_USE_BUFFER_AGE=0
-export KWIN_DRM_NO_AMS=1
+export KWIN_COMPOSE=Q
 export QSG_RENDER_LOOP=basic
 
 mkdir -p /run/user/1000/pulse /home/myke/.local/state/fedora-clean
@@ -52,7 +51,6 @@ set +e
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/libexec
 export WAYLAND_DISPLAY=fedora-clean-wayland
 export GTK_USE_PORTAL=0
-export KWIN_USE_BUFFER_AGE=0
 export QSG_RENDER_LOOP=basic
 
 systemctl --user mask --runtime --now \
@@ -75,7 +73,7 @@ for _ in $(seq 1 80); do
 done
 
 dbus-update-activation-environment --systemd \
-  LANG LC_ALL LANGUAGE GTK_USE_PORTAL KWIN_USE_BUFFER_AGE QSG_RENDER_LOOP \
+  LANG LC_ALL LANGUAGE GTK_USE_PORTAL QSG_RENDER_LOOP \
   DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE KDE_FULL_SESSION \
   QT_QPA_PLATFORM GDK_BACKEND MOZ_ENABLE_WAYLAND \
   SAL_USE_VCLPLUGIN SAL_DISABLE_OPENCL SAL_ENABLESKIA PULSE_SERVER \
@@ -83,7 +81,7 @@ dbus-update-activation-environment --systemd \
   __EGL_VENDOR_LIBRARY_FILENAMES __GLX_VENDOR_LIBRARY_NAME VK_ICD_FILENAMES GBM_BACKEND 2>/dev/null || true
 
 systemctl --user import-environment \
-  LANG LC_ALL LANGUAGE GTK_USE_PORTAL KWIN_USE_BUFFER_AGE QSG_RENDER_LOOP \
+  LANG LC_ALL LANGUAGE GTK_USE_PORTAL QSG_RENDER_LOOP \
   DISPLAY WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE KDE_FULL_SESSION \
   QT_QPA_PLATFORM GDK_BACKEND MOZ_ENABLE_WAYLAND \
   SAL_USE_VCLPLUGIN SAL_DISABLE_OPENCL SAL_ENABLESKIA PULSE_SERVER \
@@ -101,7 +99,7 @@ systemctl --user import-environment \
   qdbus6 org.kde.kded6 /kded org.kde.kded6.loadModule gtkconfig 2>/dev/null || true
 ) &
 
-exec /usr/bin/plasmashell --no-respawn
+exec env QT_QUICK_BACKEND=software /usr/bin/plasmashell --no-respawn
 INNER
 chmod 0755 "$INNER_SESSION"
 chown myke:myke "$INNER_SESSION"
