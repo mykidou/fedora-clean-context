@@ -1,0 +1,11 @@
+[Unit]
+Description=Session KDE Plasma 6 Wayland imbriquée (fedora-clean)
+After=dbus.socket pipewire.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/fedora-clean-plasma-session
+Restart=no
+
+[Install]
+WantedBy=default.target
