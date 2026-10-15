@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+main() {
+    local BASE_LAUNCH='/usr/local/bin/launch'
+    local JARVIS_LAUNCHER='/home/myke/.local/libexec/launch-jarvis'
+
+    case "${1:-}" in
+
+        jarvis)
+            shift
+            exec "$JARVIS_LAUNCHER" "$@"
+            ;;
+
+        --help|-h)
+            "$BASE_LAUNCH" "$@"
+            local rc="$?"
+
+            printf '\n'
+            printf 'Extension Jarvis :\n'
+            printf '  launch jarvis status\n'
+            printf '  launch jarvis normal\n'
+            printf '  launch jarvis lite\n'
+            printf '  launch jarvis code\n'
+            printf '  launch jarvis normal --defer 12\n'
+            printf '  launch jarvis lite --defer 12\n'
+            printf '  launch jarvis code --defer 12\n'
+
+            return "$rc"
+            ;;
+
+        *)
+            exec "$BASE_LAUNCH" "$@"
+            ;;
+    esac
+}
+
+main "$@"
