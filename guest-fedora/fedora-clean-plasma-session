@@ -2,58 +2,65 @@
 set +e
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/libexec
+export LANG=fr_FR.UTF-8
+export LC_ALL=fr_FR.UTF-8
+export LANGUAGE=fr_FR:fr
 export XDG_RUNTIME_DIR=/run/user/1000
 export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 export XDG_SESSION_TYPE=wayland
 export XDG_CURRENT_DESKTOP=KDE
 export KDE_FULL_SESSION=true
+export XDG_MENU_PREFIX="plasma-"
 export QT_QPA_PLATFORM=wayland
 export GDK_BACKEND=wayland,x11
 export MOZ_ENABLE_WAYLAND=1
+export MOZ_WEBRENDER=1
 export GTK_CSD=0
 export GTK_USE_PORTAL=0
 export SAL_USE_VCLPLUGIN=kf6
 export SAL_DISABLE_OPENCL=1
 export SAL_ENABLESKIA=0
 export PULSE_SERVER=unix:/run/host-pulse/native
+export PULSE_COOKIE=/home/myke/.config/pulse/cookie
 export LD_LIBRARY_PATH=/run/opengl-driver/lib
 export GBM_BACKENDS_PATH=/run/opengl-driver/lib/gbm
 export LIBGL_DRIVERS_PATH=/run/opengl-driver/lib/dri
 export __EGL_VENDOR_LIBRARY_FILENAMES=/run/opengl-driver/share/glvnd/egl_vendor.d/10_nvidia.json
+export __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS=/run/opengl-driver/share/egl/egl_external_platform.d
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export VK_ICD_FILENAMES=/run/opengl-driver/share/vulkan/icd.d/nvidia_icd.x86_64.json
 export GBM_BACKEND=nvidia-drm
 export KWIN_DRM_USE_EGL_STREAMS=0
-export KWIN_COMPOSE=Q
-export QSG_RENDER_LOOP=basic
+export KWIN_DRM_DEVICES=/dev/dri/card1
+export KWIN_USE_BUFFER_AGE=0
+export __GL_SYNC_TO_VBLANK=1
 
-mkdir -p /run/user/1000/pulse /home/myke/.local/state/fedora-clean
-ln -sfn /run/host-pulse/native /run/user/1000/pulse/native
-rm -f /run/user/1000/fedora-clean-wayland /run/user/1000/fedora-clean-wayland.lock
+mkdir -p /home/myke/.local/state/fedora-clean
+rm -f /run/user/1000/fedora-clean-wayland /run/user/1000/fedora-clean-wayland.lock /run/user/1000/pipewire-0*
 
-if [ -f /etc/locale.conf ]; then
-  . /etc/locale.conf
-fi
 if [ -f /home/myke/.config/plasma-localerc ]; then
   KDE_LANG=$(sed -n "s/^LANG=//p" /home/myke/.config/plasma-localerc | head -n 1)
-  KDE_LANGUAGE=$(sed -n "s/^LANGUAGE=//p" /home/myke/.config/plasma-localerc | head -n 1)
-  [ -n "$KDE_LANG" ] && LANG="$KDE_LANG" && LC_ALL="$KDE_LANG"
-  [ -n "$KDE_LANGUAGE" ] && LANGUAGE="$KDE_LANGUAGE"
+  [ -n "$KDE_LANG" ] && export LANG="$KDE_LANG" && export LC_ALL="$KDE_LANG"
 fi
-export LANG="${LANG:-fr_FR.UTF-8}"
-export LC_ALL="${LC_ALL:-$LANG}"
-export LANGUAGE="${LANGUAGE:-fr_FR:fr}"
 
 INNER_SESSION="/run/user/1000/start-inner-plasma.sh"
 cat << "INNER" > "$INNER_SESSION"
 #!/usr/bin/env bash
 set +e
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/libexec
+export LANG=fr_FR.UTF-8
+export LC_ALL=fr_FR.UTF-8
+export LANGUAGE=fr_FR:fr
+export XDG_MENU_PREFIX="plasma-"
 export WAYLAND_DISPLAY=fedora-clean-wayland
 export GTK_USE_PORTAL=0
-export QSG_RENDER_LOOP=basic
+export PULSE_SERVER=unix:/run/host-pulse/native
+export PULSE_COOKIE=/home/myke/.config/pulse/cookie
+export __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS=/run/opengl-driver/share/egl/egl_external_platform.d
 
+systemctl --user stop pipewire.socket pipewire.service wireplumber.service pipewire-pulse.socket pipewire-pulse.service 2>/dev/null || true
 systemctl --user mask --runtime --now \
+  pipewire.socket pipewire.service wireplumber.service pipewire-pulse.socket pipewire-pulse.service \
   xdg-desktop-portal.service \
   xdg-document-portal.service \
   xdg-permission-store.service \
@@ -61,6 +68,8 @@ systemctl --user mask --runtime --now \
   xdg-desktop-portal-gtk.service \
   plasma-kwin_wayland.service \
   plasma-kscreen.service 2>/dev/null || true
+
+rm -f /run/user/1000/pipewire-0 /run/user/1000/pipewire-0.lock
 
 for _ in $(seq 1 80); do
   for x_socket in /tmp/.X11-unix/X*; do
@@ -71,7 +80,6 @@ for _ in $(seq 1 80); do
   done
   sleep 0.1
 done
-
 XAUTH_FILE=$(find /run/user/1000 -maxdepth 1 -name "xauth_*" 2>/dev/null | head -n 1)
 if [ -n "$XAUTH_FILE" ]; then
   export XAUTHORITY="$XAUTH_FILE"
@@ -79,23 +87,22 @@ fi
 /usr/bin/xhost +SI:localuser:myke >/dev/null 2>&1 || true
 
 dbus-update-activation-environment --systemd \
-  LANG LC_ALL LANGUAGE GTK_USE_PORTAL QSG_RENDER_LOOP \
+  LANG LC_ALL LANGUAGE XDG_MENU_PREFIX GTK_USE_PORTAL \
   DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE KDE_FULL_SESSION \
-  QT_QPA_PLATFORM GDK_BACKEND MOZ_ENABLE_WAYLAND \
-  SAL_USE_VCLPLUGIN SAL_DISABLE_OPENCL SAL_ENABLESKIA PULSE_SERVER \
+  QT_QPA_PLATFORM GDK_BACKEND MOZ_ENABLE_WAYLAND MOZ_WEBRENDER \
+  SAL_USE_VCLPLUGIN SAL_DISABLE_OPENCL SAL_ENABLESKIA PULSE_SERVER PULSE_COOKIE \
   LD_LIBRARY_PATH GBM_BACKENDS_PATH LIBGL_DRIVERS_PATH \
-  __EGL_VENDOR_LIBRARY_FILENAMES __GLX_VENDOR_LIBRARY_NAME VK_ICD_FILENAMES GBM_BACKEND 2>/dev/null || true
+  __EGL_VENDOR_LIBRARY_FILENAMES __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS __GLX_VENDOR_LIBRARY_NAME VK_ICD_FILENAMES GBM_BACKEND 2>/dev/null || true
 
 systemctl --user import-environment \
-  LANG LC_ALL LANGUAGE GTK_USE_PORTAL QSG_RENDER_LOOP \
+  LANG LC_ALL LANGUAGE XDG_MENU_PREFIX GTK_USE_PORTAL \
   DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE KDE_FULL_SESSION \
-  QT_QPA_PLATFORM GDK_BACKEND MOZ_ENABLE_WAYLAND \
-  SAL_USE_VCLPLUGIN SAL_DISABLE_OPENCL SAL_ENABLESKIA PULSE_SERVER \
+  QT_QPA_PLATFORM GDK_BACKEND MOZ_ENABLE_WAYLAND MOZ_WEBRENDER \
+  SAL_USE_VCLPLUGIN SAL_DISABLE_OPENCL SAL_ENABLESKIA PULSE_SERVER PULSE_COOKIE \
   LD_LIBRARY_PATH GBM_BACKENDS_PATH LIBGL_DRIVERS_PATH \
-  __EGL_VENDOR_LIBRARY_FILENAMES __GLX_VENDOR_LIBRARY_NAME VK_ICD_FILENAMES GBM_BACKEND 2>/dev/null || true
+  __EGL_VENDOR_LIBRARY_FILENAMES __EGL_EXTERNAL_PLATFORM_CONFIG_DIRS __GLX_VENDOR_LIBRARY_NAME VK_ICD_FILENAMES GBM_BACKEND 2>/dev/null || true
 
-# Reconstruction du cache des catégories du menu avec redhat-menus francisé
-rm -rf /home/myke/.cache/ksycoca* 2>/dev/null || true
+rm -rf /home/myke/.cache/ksycoca* /home/myke/.cache/plasma* 2>/dev/null || true
 /usr/bin/kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
 
 [ -x /usr/libexec/kactivitymanagerd ] && /usr/libexec/kactivitymanagerd &
@@ -109,10 +116,10 @@ rm -rf /home/myke/.cache/ksycoca* 2>/dev/null || true
   qdbus6 org.kde.kded6 /kded org.kde.kded6.loadModule gtkconfig 2>/dev/null || true
 ) &
 
-exec env QT_QUICK_BACKEND=software /usr/bin/plasmashell --no-respawn
+exec /usr/bin/plasmashell --no-respawn
 INNER
 chmod 0755 "$INNER_SESSION"
-chown myke:myke "$INNER_SESSION"
+chown 1000:1000 "$INNER_SESSION"
 
 exec /usr/bin/kwin_wayland \
   --xwayland \
